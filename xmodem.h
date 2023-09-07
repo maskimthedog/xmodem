@@ -31,6 +31,10 @@
 #ifndef XMODEM_H_
 #define XMODEM_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /***********************************************************************************************************************
  * Config Section
  **********************************************************************************************************************/
@@ -44,8 +48,8 @@
 #define MAXRETRANS 25
 /** End Config Section ************************************************************************************************/
 
-int _inbyte(unsigned short t);
-void _outbyte(int c);
+int _inbyte(void *ctx, unsigned short t);
+void _outbyte(void *ctx, int c);
 
 /***********************************************************************************************************************
  * Function prototype for storing the received chunks
@@ -72,17 +76,19 @@ int XmodemReceive(
   /* Checksum mode to request: 0 - arithmetic, 1 - CRC16, 2 - YMODEM-G (CRC16 and no ACK) */
   int crc,
   /* Receive mode: 0 - normal, nonzero - receive YMODEM control packet */
-  int mode);
+  int mode,
+  /* Function context pointer to pass to _inbyte and _outbyte */
+  void *inOutCtx);
 
 /***********************************************************************************************************************
  * Function shortcut - XMODEM Receive with checksum
  **********************************************************************************************************************/
-#define XmodemReceiveCsum(storeChunk, ctx, destsz) XmodemReceive(storeChunk, ctx, destsz, 0, 0)
+#define XmodemReceiveCsum(storeChunk, ctx, destsz, inOutCtx) XmodemReceive(storeChunk, ctx, destsz, 0, 0, inOutCtx)
 
 /***********************************************************************************************************************
  * Function shortcut - XMODEM Receive with CRC-16
  **********************************************************************************************************************/
-#define XmodemReceiveCrc(storeChunk, ctx, destsz) XmodemReceive(storeChunk, ctx, destsz, 1, 0)
+#define XmodemReceiveCrc(storeChunk, ctx, destsz, inOutCtx) XmodemReceive(storeChunk, ctx, destsz, 1, 0, inOutCtx)
 
 /***********************************************************************************************************************
  * Function prototype for fetching the data chunks
@@ -108,16 +114,22 @@ int XmodemTransmit(
   /* If nonzero 1024 byte blocks are used (XMODEM-1K) */
   int onek,
   /* Transfer mode: 0 - normal, nonzero - transmit YMODEM control packet */
-  int mode);
+  int mode,
+  /* Function context pointer to pass to _inbyte and _outbyte */
+  void *inOutCtx);
 
 /***********************************************************************************************************************
  * Function shortcut - XMODEM Transmit with 128 bytes blocks
  **********************************************************************************************************************/
-#define XmodemTransmit128b(fetchChunk, ctx, srcsz) XmodemTransmit(fetchChunk, ctx, srcsz, 0, 0)
+#define XmodemTransmit128b(fetchChunk, ctx, srcsz, inOutCtx) XmodemTransmit(fetchChunk, ctx, srcsz, 0, 0, inOutCtx)
 
 /***********************************************************************************************************************
  * Function shortcut - XMODEM Transmit with 1K blocks
  **********************************************************************************************************************/
-#define XmodemTransmit1K(fetchChunk, ctx, srcsz) XmodemTransmit(fetchChunk, ctx, srcsz, 1, 0)
+#define XmodemTransmit1K(fetchChunk, ctx, srcsz, inOutCtx) XmodemTransmit(fetchChunk, ctx, srcsz, 1, 0, inOutCtx)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // XMODEM_H_

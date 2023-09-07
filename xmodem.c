@@ -112,16 +112,16 @@ static int check(int crc, const unsigned char *buf, int sz)
 /***********************************************************************************************************************
  * Flush input
  **********************************************************************************************************************/
-static void flushinput(void)
+static void flushinput(void *inOutCtx)
 {
-  while (_inbyte(((DLY_1S)*3)>>1) >= 0)
+  while (_inbyte(inOutCtx, ((DLY_1S)*3)>>1) >= 0)
     ;
 }
 
 /***********************************************************************************************************************
  * XMODEM Receive
  **********************************************************************************************************************/
-int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int mode)
+int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int mode, void *inOutCtx)
 {
   unsigned char xbuff[XBUF_SIZE];
   unsigned char *p;
@@ -133,8 +133,8 @@ int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int
 
   for(;;) {
     for( retry = 0; retry < 16; ++retry) {
-      if (trychar) _outbyte(trychar);
-      if ((c = _inbyte((DLY_1S)<<1)) >= 0) {
+      if (trychar) _outbyte(inOutCtx, trychar);
+      if ((c = _inbyte(inOutCtx, (DLY_1S)<<1)) >= 0) {
         switch (c) {
           case SOH:
             bufsz = 128;
@@ -145,12 +145,12 @@ int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int
             goto start_recv;
 #endif
           case EOT:
-            _outbyte(ACK);
+            _outbyte(inOutCtx, ACK);
             return len; /* normal end */
           case CAN:
-            if ((c = _inbyte(DLY_1S)) == CAN) {
-              flushinput();
-              _outbyte(ACK);
+            if ((c = _inbyte(inOutCtx, DLY_1S)) == CAN) {
+              flushinput(inOutCtx);
+              _outbyte(inOutCtx, ACK);
               return -1; /* canceled by remote */
             }
             break;
@@ -161,10 +161,10 @@ int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int
     }
     if (trychar == 'G') { trychar = 'C'; crc = 1; continue; }
     else if (trychar == 'C') { trychar = NAK; crc = 0; continue; }
-    flushinput();
-    _outbyte(CAN);
-    _outbyte(CAN);
-    _outbyte(CAN);
+    flushinput(inOutCtx);
+    _outbyte(inOutCtx, CAN);
+    _outbyte(inOutCtx, CAN);
+    _outbyte(inOutCtx, CAN);
     return -2; /* sync error */
 
     start_recv:
@@ -172,7 +172,7 @@ int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int
     p = xbuff;
     *p++ = c;
     for (i = 0;  i < (bufsz+(crc?1:0)+3); ++i) {
-      if ((c = _inbyte(DLY_1S)) < 0) goto reject;
+      if ((c = _inbyte(inOutCtx, DLY_1S)) < 0) goto reject;
       *p++ = c;
     }
 
@@ -195,26 +195,26 @@ int XmodemReceive(StoreChunkType storeChunk, void *ctx, int destsz, int crc, int
         retrans = MAXRETRANS+1;
       }
       if (--retrans <= 0) {
-        flushinput();
-        _outbyte(CAN);
-        _outbyte(CAN);
-        _outbyte(CAN);
+        flushinput(inOutCtx);
+        _outbyte(inOutCtx, CAN);
+        _outbyte(inOutCtx, CAN);
+        _outbyte(inOutCtx, CAN);
         return -3; /* too many retry error */
       }
-      if(crc != 2) _outbyte(ACK);
+      if(crc != 2) _outbyte(inOutCtx, ACK);
       if(mode) return len; /* YMODEM control block received */
       continue;
     }
     reject:
-    flushinput();
-    _outbyte(NAK);
+    flushinput(inOutCtx);
+    _outbyte(inOutCtx, NAK);
   }
 }
 
 /***********************************************************************************************************************
  * XMODEM Transmit
  **********************************************************************************************************************/
-int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, int mode)
+int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, int mode, void *inOutCtx)
 {
   unsigned char xbuff[XBUF_SIZE];
   int bufsz, crc = -1;
@@ -224,7 +224,7 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
 
   for(;;) {
     for( retry = 0; retry < 16; ++retry) {
-      if ((c = _inbyte((DLY_1S)<<1)) >= 0) {
+      if ((c = _inbyte(inOutCtx, (DLY_1S)<<1)) >= 0) {
         switch (c) {
           case 'G':
             crc = 2;
@@ -236,9 +236,9 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
             crc = 0;
             goto start_trans;
           case CAN:
-            if ((c = _inbyte(DLY_1S)) == CAN) {
-              _outbyte(ACK);
-              flushinput();
+            if ((c = _inbyte(inOutCtx, DLY_1S)) == CAN) {
+              _outbyte(inOutCtx, ACK);
+              flushinput(inOutCtx);
               return -1; /* canceled by remote */
             }
             break;
@@ -247,10 +247,10 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
         }
       }
     }
-    _outbyte(CAN);
-    _outbyte(CAN);
-    _outbyte(CAN);
-    flushinput();
+    _outbyte(inOutCtx, CAN);
+    _outbyte(inOutCtx, CAN);
+    _outbyte(inOutCtx, CAN);
+    flushinput(inOutCtx);
     return -2; /* no sync */
 
     for(;;) {
@@ -290,9 +290,9 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
         }
         for (retry = 0; retry < MAXRETRANS; ++retry) {
           for (i = 0; i < bufsz+4+(crc?1:0); ++i) {
-            _outbyte(xbuff[i]);
+            _outbyte(inOutCtx, xbuff[i]);
           }
-          c = (crc == 2) ? ACK : _inbyte(DLY_1S);
+          c = (crc == 2) ? ACK : _inbyte(inOutCtx, DLY_1S);
           if (c >= 0 ) {
             switch (c) {
               case ACK:
@@ -300,9 +300,9 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
                 len += bufsz;
                 goto start_trans;
               case CAN:
-                if ((c = _inbyte(DLY_1S)) == CAN) {
-                  _outbyte(ACK);
-                  flushinput();
+                if ((c = _inbyte(inOutCtx, DLY_1S)) == CAN) {
+                  _outbyte(inOutCtx, ACK);
+                  flushinput(inOutCtx);
                   return -1; /* canceled by remote */
                 }
                 break;
@@ -312,10 +312,10 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
             }
           }
         }
-        _outbyte(CAN);
-        _outbyte(CAN);
-        _outbyte(CAN);
-        flushinput();
+        _outbyte(inOutCtx, CAN);
+        _outbyte(inOutCtx, CAN);
+        _outbyte(inOutCtx, CAN);
+        flushinput(inOutCtx);
         return -4; /* xmit error */
       }
       else if(mode) {
@@ -323,14 +323,14 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
       }
       else {
         for (retry = 0; retry < 10; ++retry) {
-          _outbyte(EOT);
-          if ((c = _inbyte((DLY_1S)<<1)) == ACK) break;
+          _outbyte(inOutCtx, EOT);
+          if ((c = _inbyte(inOutCtx, (DLY_1S)<<1)) == ACK) break;
         }
         if(c == ACK) {
           return len; /* Normal exit */
         }
         else {
-          flushinput();
+          flushinput(inOutCtx);
           return -5; /* No ACK after EOT */
         }
       }
