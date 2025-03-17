@@ -50,6 +50,7 @@ extern "C" {
 
 int _inbyte(void *ctx, unsigned short t);
 void _outbyte(void *ctx, int c);
+void _flushinput(void* ctx);
 
 /***********************************************************************************************************************
  * Function prototype for storing the received chunks
