@@ -47,6 +47,7 @@
 #define SOH   0x01
 #define STX   0x02
 #define EOT   0x04
+#define ENQ   0x05
 #define ACK   0x06
 #define NAK   0x15
 #define CAN   0x18
@@ -299,6 +300,7 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
                 break;
               case NAK:
               default:
+         
                 break;
             }
           }
