@@ -317,7 +317,7 @@ int XmodemTransmit(FetchChunkType fetchChunk, void *ctx, int srcsz, int onek, in
       else {
         for (retry = 0; retry < 10; ++retry) {
           _outbyte(inOutCtx, EOT);
-          if ((c = _inbyte(inOutCtx, (DLY_1S)<<1)) == ACK) break;
+          if ((c = _inbyte(inOutCtx, DLY_10S)) == ACK) break;
         }
         if(c == ACK) {
           return len; /* Normal exit */

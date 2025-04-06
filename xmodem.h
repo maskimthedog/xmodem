@@ -45,6 +45,7 @@ extern "C" {
 #define XMODEM_1K
 
 #define DLY_1S 1000
+#define DLY_10S 10000
 #define MAXRETRANS 25
 /** End Config Section ************************************************************************************************/
 
